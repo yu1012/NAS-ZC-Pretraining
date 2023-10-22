@@ -17,14 +17,19 @@ def parse_args():
     parser.add_argument('--freeze', action='store_true', help='whether freeze GIN or not on finetuning step')
     parser.add_argument('--ranking_loss', action='store_true', help='whether use ranking loss or not')
     parser.add_argument('--freeze_epoch', type=int, default=10, help='number of epochs to freeze GIN on finetuning step')
-    parser.add_argument('--pretrain_epoch', type=int, default=10, help='training epoch of pretraining step')
+    parser.add_argument('--pretrain_epoch', type=int, default=50, help='training epoch of pretraining step')
+    parser.add_argument('--epoch', type=int, default=100, help='training epoch of finetuning step')
     parser.add_argument('--pretrain_lr', type=float, default=1e-3, help='learning rate of pretraining step')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--dim_in', type=int, default=6, help='input dimension')
     parser.add_argument('--dim_hid', type=int, default=32, help='hidden dimension')
     parser.add_argument('--dim_out', type=int, default=1, help='output dimension')
-    parser.add_argument('--n_layers', type=int, default=2, help='number of layers')
+    parser.add_argument('--n_layers', type=int, default=2, help='number of GIN layers')
+    parser.add_argument('--num_train', type=int, default=80, help='number of train samples')
+    parser.add_argument('--num_val', type=int, default=20, help='number of validation samples')
+    parser.add_argument('--batch_size', type=int, default=10, help='batch size')
     
+
     return parser.parse_args()
 
 def seed_everything(seed: int = 29):

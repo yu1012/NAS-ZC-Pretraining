@@ -8,15 +8,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 from tqdm import trange
-from torch_geometric.loader import DataLoader as GDataLoader
 
 from utils import parse_args, seed_everything
 from gnn import GIN_Predictor
+from data import get_data
 
 import warnings
 warnings.filterwarnings("ignore")
 
-import wandb
+# import wandb
 torch.set_num_threads(1)
 
 if __name__ == "__main__":
@@ -38,19 +38,20 @@ if __name__ == "__main__":
     results = {}
     split = args.split
     perm = perms[split]
-    wandb.init(
-        project="NAS",
-        name=f'{split}_{args.num_train}_{args.num_val}',
-        config={
-        "split": split,
-        "pretrain": args.pretrain,
-        "freeze": args.freeze,
-        "pretrain-lr": args.pretraining_lr,
-        "lr": args.lr,
-        "train_data": args.num_train,
-        "val_data": args.num_val
-        }
-    )
+    
+    # wandb.init(
+    #     project="NAS",
+    #     name=f'{split}_{args.num_train}_{args.num_val}',
+    #     config={
+    #     "split": split,
+    #     "pretrain": args.pretrain,
+    #     "freeze": args.freeze,
+    #     "pretrain-lr": args.pretraining_lr,
+    #     "lr": args.lr,
+    #     "train_data": args.num_train,
+    #     "val_data": args.num_val
+    #     }
+    # )
 
     predictor = GIN_Predictor(args, labels, device=args.device)
 
@@ -59,34 +60,31 @@ if __name__ == "__main__":
             masks, data = ranking_data(ranking, perms, dataset)
             predictor.ranking_fit(masks, data)
         else:
-            masks, data = get_data(config, True, perm, dataset, config.dataset.batch_size, device)
-            e_t_hist, e_v_hist = predictor.proxy_fit(masks, data)
+            masks, data = get_data(args, True, perm, dataset)
+            predictor.pretrain(masks, data)
         predictor.model.lin2 = nn.Linear(args.dim_hid, args.dim_out, True)
         
-        # if args.freeze:
-        #     for p in predictor.model.conv1.parameters():
-        #         p.require_grads = False
-        #     for p in predictor.model.convs.parameters():
-        #         p.require_grads = False
-        #     for p in predictor.model.lin1.parameters():
-        #         p.require_grads = False
+        if args.freeze:
+            for p in predictor.model.conv1.parameters():
+                p.require_grads = False
+            for p in predictor.model.convs.parameters():
+                p.require_grads = False
+            for p in predictor.model.lin1.parameters():
+                p.require_grads = False
 
-    predictor.model = predictor.model.to(device)
-    masks, data = get_data(config, False, perm, dataset, config.dataset.batch_size, device)
+    predictor.model = predictor.model.to(args.device)
+    masks, data = get_data(args, False, perm, dataset)
     e_t_hist, e_v_hist = predictor.fit(masks, data)
     metrics = predictor.query(masks, data)
 
-    wandb.log(metrics)
-    wandb.finish()
+    # wandb.log(metrics)
+    # wandb.finish()
 
-    # for key in metrics:
-    #     if key not in results:
-    #         results[key] = [metrics[key]]
-    #     else:
-    #         results[key].append(metrics[key])
+    for key in metrics:
+        if key not in results:
+            results[key] = [metrics[key]]
+        else:
+            results[key].append(metrics[key])
 
-    # for key in results:
-    #     print(key, ": {:.4f}({:.4f})".format(np.mean(results[key]), np.std(results[key])))
-
-    # with open('./gen_results/{}.json'.format(method), 'w') as f:
-    #     json.dump(results, f)
+    for key in results:
+        print(key, ": {:.4f}({:.4f})".format(np.mean(results[key]), np.std(results[key])))
